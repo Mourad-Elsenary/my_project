@@ -1,0 +1,238 @@
+#include <PID_v1.h>
+  #define  ust1  13
+  #define  use1  12
+  #define  ust2  A1 
+  #define  use2  A2
+  #define  ust3  A4
+  #define  use3  A5
+  #define  in1   12
+  #define  in2   13
+  #define  in3   7
+  #define  in4   8
+
+  const  int enA  = 5; 
+  const  int enB  = 6; 
+  double setpoint1, input1, output1, kp1 = 0.6, kdL = 0, ki1 = 0.8; volatile long counter1 = 0;
+  unsigned long RPM1;
+  float dt1;
+  float ratio1 = 0.0024;
+  unsigned long prev_time1 = 0, cur_time1 = 0;
+  double setpoint2, input2, output2, kp2 = 0.6, kdr = 0, ki2 = 0.8; volatile long counter2 = 0;
+  unsigned long RPM2;
+  float dt2;
+  float ratio2 = 0.0024;
+  unsigned long prev_time2 = 0, cur_time2 = 0;
+  int dL=0;
+  int dr=0;
+  int df=0;
+  
+  #define pwm1 9
+  #define pwm2 10
+  
+  #define enc1 2
+  #define enc2 4
+  #define DIS 20
+
+  PID spedcon1(&input1, &output1, &setpoint1, kp1, ki1, kdL, DIRECT); 
+  PID spedcon2(&input2, &output2, &setpoint2, kp2, ki2, kdr, DIRECT);
+ void setup() 
+ {
+  pinMode(ust1,OUTPUT);
+  pinMode(use1,INPUT);
+  pinMode(ust2,OUTPUT);
+  pinMode(use2,INPUT); 
+  pinMode(ust3,OUTPUT);
+  pinMode(use3,INPUT); 
+  pinMode(in1,OUTPUT);
+  pinMode(in2,OUTPUT);
+  pinMode(in3,OUTPUT);
+  pinMode(in4,OUTPUT);
+  pinMode(pwm1,OUTPUT);
+  pinMode(pwm2,OUTPUT);
+  Serial.begin(9600);
+  pinMode(enc1, INPUT_PULLUP);
+
+  ISRA1(); 
+
+  ISRA2();
+  attachInterrupt(digitalPinToInterrupt(enc1), ISRA1, CHANGE);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  prev_time1 = millis();
+  dt1 = 200.0;
+  spedcon1.SetMode(AUTOMATIC);
+  setpoint1 = 200.0;
+  attachInterrupt(digitalPinToInterrupt(enc2), ISRA2, CHANGE);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  prev_time2 = millis();
+  dt1 = 200.0;
+  spedcon2.SetMode(AUTOMATIC);
+  setpoint2 = 200.0;
+}
+void loop() {
+  
+  
+    cur_time1 = millis();
+  if ((cur_time1 - prev_time1) > dt1) 
+  { RPM1 = (float) counter1 * ratio1 / (dt1 * 0.001) * 60.0;
+    input1 = RPM1;
+    spedcon1.Compute();
+    analogWrite(pwm1, output1);
+
+
+    delay(3);
+    
+    prev_time1 = cur_time1;
+    counter1 = 0;
+    }
+    cur_time2 = millis();
+  if ((cur_time2 - prev_time2) > dt2)
+  { RPM1 = (float) counter2 * ratio2 / (dt2 * 0.001) * 60.0;
+    input2 = RPM2;
+    spedcon2.Compute();
+    analogWrite(pwm2, output2);
+
+    delay(3);
+  }
+  
+ 
+ df=Frontsensor ();
+ dr= Rightsensor ();
+ dL=  Leftsensor();
+ 
+  Frontsensor ();
+  Rightsensor ();
+   Leftsensor ();
+ 
+ if(dL< DIS && dr < DIS && df < DIS )
+ {
+turn_right();
+delay(500);
+}
+else if(dL< DIS && dr > DIS && df < DIS )
+ {
+  turn_right(); 
+ }
+ else if(dL< DIS && dr> DIS && df > DIS )
+ {
+ forward();
+ }
+ else if(dL< DIS && dr < DIS && df > DIS )
+ {
+ forward();
+ }
+
+ else if(dL> DIS && dr<DIS && df < DIS )
+ {
+  
+ turn_left();
+ }
+ else if(dL> DIS && dr > DIS && df < DIS )
+ {
+  turn_left();
+ }
+ else if(dL> DIS && dr < DIS && df > DIS )
+ {
+   turn_left();
+ }
+  else if(dL> DIS && dr > DIS && df > DIS )
+ {
+   turn_left();
+ } 
+
+}
+void forward()
+{
+  digitalWrite(in1,HIGH);
+  digitalWrite(in2,LOW);
+  digitalWrite(in3,HIGH);
+  digitalWrite(in4,LOW);
+  digitalWrite(enA,pwm1);
+  digitalWrite(enB,pwm2);
+  
+}
+void turn_left()
+{
+   digitalWrite(in1,HIGH);
+  digitalWrite(in2,LOW);
+  digitalWrite(in3,LOW);
+  digitalWrite(in4,HIGH);
+  digitalWrite(enA,pwm1);
+  digitalWrite(enB,pwm1);
+    delay(500);
+
+}
+void turn_right()
+{ 
+  digitalWrite(in1,LOW);
+  digitalWrite(in2,HIGH);
+  digitalWrite(in3,HIGH);
+  digitalWrite(in4,LOW);
+  digitalWrite(enA,pwm2);
+  digitalWrite(enB,pwm2);
+  delay(500);
+}
+void reverse()
+{
+  digitalWrite(in1,LOW);
+  digitalWrite(in2,HIGH);
+  digitalWrite(in3,LOW);
+  digitalWrite(in4,HIGH);
+  digitalWrite(enA,pwm1);
+  digitalWrite(enB,pwm1) ;
+}
+void stop1() 
+{ 
+  digitalWrite(in1,LOW);
+  digitalWrite(in2,LOW);
+  digitalWrite(in3,LOW);
+  digitalWrite(in4,LOW);
+  digitalWrite(enA,pwm1);
+  digitalWrite(enB,pwm1);
+}
+long Frontsensor()//front=dL
+{
+  long dur;
+  digitalWrite(ust1,LOW);
+  delayMicroseconds(5);
+  digitalWrite(ust1,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ust1,LOW);
+  dur = pulseIn(use1,HIGH);
+  return (dur/57);
+  
+
+}
+long Rightsensor()
+{
+  long dur;
+  digitalWrite(ust2,LOW);
+  delayMicroseconds(5);
+  digitalWrite(ust2,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ust2,LOW);
+  dur = pulseIn(use2,HIGH);
+  return (dur/57);
+}
+long Leftsensor()
+{
+  long dur;
+  digitalWrite(ust3,LOW);
+  delayMicroseconds(5);
+  digitalWrite(ust3,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ust3,LOW);
+  dur = pulseIn(use3,HIGH);
+  return (dur/57);
+}
+
+  void ISRA1()
+{
+  counter1++;
+}
+
+ void ISRA2()
+{
+  counter2++;
+}
